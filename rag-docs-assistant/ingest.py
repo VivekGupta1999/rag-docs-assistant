@@ -29,7 +29,34 @@ for path in md_files:
         shortest_file = path
 
 
+
+def chunk_text(text,chunk_size=1000, overlap = 200):
+    chunks = []
+    start =0
+    while(start<len(text)):
+        end = start + chunk_size
+        chunk = text[start:end]
+        chunks.append(chunk)
+        start = end - overlap
+    return chunks
+
+
+all_chunks = []
+
+for path in md_files:
+    content = path.read_text(encoding="utf-8")
+    chunks = chunk_text(content)
+    for chunk in chunks:
+        all_chunks.append({"text":chunk,"source":str(path)})
+
+
 print(f"Total Characters: {total_chars}")
 print(f"Longest File: {longest_file} ({longest_length} chars)")
 print(f"Shortest File: {shortest_file} ({shortest_length} chars)")
+print(f"Total chunks created: {len(all_chunks)}")
+
+
+print("\n--- Sample chunk ---")
+print(all_chunks[500]["source"])
+print(all_chunks[500]["text"])
 
