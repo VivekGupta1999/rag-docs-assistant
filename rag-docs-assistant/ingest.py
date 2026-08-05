@@ -3,6 +3,11 @@ import chromadb
 
 docs_dir = Path("fastapi-repo/docs/en/docs")
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
+try:
+    chroma_client.delete_collection(name="fastapi_docs")
+except Exception :
+    pass
+
 collection = chroma_client.get_or_create_collection(name="fastapi_docs")
 md_files = list(docs_dir.rglob("*.md"))
 
@@ -64,7 +69,9 @@ print(f"Total chunks created: {len(all_chunks)}")
 
 ids = [f"chunk_{i}" for i in range(len(all_chunks))]
 documents = [chunk["text"] for chunk in all_chunks]
-metadatas = [{"source": chunk["source"]} for chunk in all_chunks]
+metadatas = [{"source": chunk["source"],
+              "doc_type":"changelog" if "release-notes.md" in chunk["source"] else "guide",
+              } for chunk in all_chunks]
 
 collection.add(
     ids=ids,
