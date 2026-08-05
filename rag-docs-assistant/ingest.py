@@ -1,7 +1,9 @@
 from pathlib import Path
+import chromadb
 
 docs_dir = Path("fastapi-repo/docs/en/docs")
-
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection = chroma_client.get_or_create_collection(name="fastapi_docs")
 md_files = list(docs_dir.rglob("*.md"))
 
 print(f"Found {len(md_files)} markdown files")
@@ -56,7 +58,18 @@ print(f"Shortest File: {shortest_file} ({shortest_length} chars)")
 print(f"Total chunks created: {len(all_chunks)}")
 
 
-print("\n--- Sample chunk ---")
-print(all_chunks[500]["source"])
-print(all_chunks[500]["text"])
+# print("\n--- Sample chunk ---")
+# print(all_chunks[500]["source"])
+# print(all_chunks[500]["text"])
 
+ids = [f"chunk_{i}" for i in range(len(all_chunks))]
+documents = [chunk["text"] for chunk in all_chunks]
+metadatas = [{"source": chunk["source"]} for chunk in all_chunks]
+
+collection.add(
+    ids=ids,
+    documents=documents,
+    metadatas=metadatas,
+)
+
+print(f"Collection now has {collection.count()} chunks")
