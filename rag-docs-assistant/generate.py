@@ -36,7 +36,9 @@ def get_context(question):
         where={"doc_type":"guide"}
     )
 
-    return format_context(result["documents"][0], result["metadatas"][0])
+    context = format_context(result["documents"][0], result["metadatas"][0])
+    sources = [meta["source"] for meta in result["metadatas"][0]]
+    return context,sources
 
 def format_context(documents,metadatas):
     parts = []
@@ -50,18 +52,18 @@ def format_context(documents,metadatas):
 
 
 def answer_question(question):
-    context = get_context(question)
+    context,sources = get_context(question)
 
     message = client.messages.create(
         model=model,
         max_tokens = 1000,
         system=SYSTEM_PROMPT,
         messages=[
-            {"role":"user","content":f"Context: \n{context} \\n Question: \n{question}"}
+            {"role":"user","content":f"Context: \n{context} \n\n Question: \n{question}"}
         ],
     )
 
-    return message.content[0].text
+    return message.content[0].text,sources
 
 if __name__ == "__main__":
-    print(answer_question("What is the capital of France?"))
+    print(answer_question("What is the capital of France?")[0])

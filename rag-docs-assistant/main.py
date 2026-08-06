@@ -9,5 +9,5 @@ class QueryRequest(BaseModel):
 
 @app.post("/query")
 def query(request:QueryRequest):
-    answer = answer_question(request.question)
-    return {"answer": answer}
+    answer,sources = answer_question(request.question)
+    return {"answer": answer,"source":sources}
