@@ -63,5 +63,5 @@ def answer_question(question):
 
     return message.content[0].text
 
-question = "What is  Fast API cloud?"
-print(answer_question("What is the capital of France?"))
+if __name__ == "__main__":
+    print(answer_question("What is the capital of France?"))
