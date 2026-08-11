@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Docs Assistant</title>
+<style>
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 0 20px;
+    color: #1a1a1a;
+    background: #fafafa;
+  }
+  h1 {
+    font-size: 1.4rem;
+    margin-bottom: 1.5rem;
+  }
+  .input-row {
+    display: flex;
+    gap: 8px;
+  }
+  #question {
+    flex: 1;
+    padding: 10px 12px;
+    font-size: 1rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+  }
+  #ask-btn {
+    padding: 10px 20px;
+    font-size: 1rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+  }
+  #ask-btn:disabled {
+    background: #93b4ef;
+    cursor: not-allowed;
+  }
+  #ask-btn:hover:not(:disabled) {
+    background: #1d4ed8;
+  }
+  .section {
+    margin-top: 24px;
+  }
+  .section h2 {
+    font-size: 0.95rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #666;
+    margin-bottom: 6px;
+  }
+  #answer {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 14px 16px;
+    white-space: pre-wrap;
+    line-height: 1.5;
+    min-height: 1.2em;
+  }
+  #sources {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  #sources li {
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+    color: #444;
+  }
+  #error {
+    color: #b91c1c;
+    margin-top: 12px;
+    display: none;
+  }
+</style>
+</head>
+<body>
+  <h1>RAG Docs Assistant</h1>
+
+  <div class="input-row">
+    <input type="text" id="question" placeholder="Ask a question about the docs..." autocomplete="off">
+    <button id="ask-btn">Ask</button>
+  </div>
+
+  <div id="error"></div>
+
+  <div class="section">
+    <h2>Answer</h2>
+    <div id="answer"></div>
+  </div>
+
+  <div class="section">
+    <h2>Sources</h2>
+    <ul id="sources"></ul>
+  </div>
+
+<script>
+  const questionInput = document.getElementById("question");
+  const askBtn = document.getElementById("ask-btn");
+  const answerEl = document.getElementById("answer");
+  const sourcesEl = document.getElementById("sources");
+  const errorEl = document.getElementById("error");
+
+  async function askQuestion() {
+    const question = questionInput.value.trim();
+    if (!question) return;
+
+    errorEl.style.display = "none";
+    errorEl.textContent = "";
+    answerEl.textContent = "Thinking...";
+    sourcesEl.innerHTML = "";
+    askBtn.disabled = true;
+
+    try {
+      const res = await fetch("/query", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question })
+      });
+
+      if (!res.ok) {
+        throw new Error(`Request failed with status ${res.status}`);
+      }
+
+      const data = await res.json();
+      answerEl.textContent = data.answer || "(no answer returned)";
+
+      const sources = data.source || [];
+      sourcesEl.innerHTML = "";
+      if (sources.length === 0) {
+        const li = document.createElement("li");
+        li.textContent = "No sources returned.";
+        sourcesEl.appendChild(li);
+      } else {
+        sources.forEach(src => {
+          const li = document.createElement("li");
+          li.textContent = src;
+          sourcesEl.appendChild(li);
+        });
+      }
+    } catch (err) {
+      answerEl.textContent = "";
+      errorEl.textContent = "Error: " + err.message;
+      errorEl.style.display = "block";
+    } finally {
+      askBtn.disabled = false;
+    }
+  }
+
+  askBtn.addEventListener("click", askQuestion);
+  questionInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") askQuestion();
+  });
+</script>
+</body>
+</html>
