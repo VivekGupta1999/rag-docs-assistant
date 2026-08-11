@@ -58,6 +58,7 @@ def answer_question(question):
         model=model,
         max_tokens = 1000,
         system=SYSTEM_PROMPT,
+        temperature=0,
         messages=[
             {"role":"user","content":f"Context: \n{context} \n\n Question: \n{question}"}
         ],
