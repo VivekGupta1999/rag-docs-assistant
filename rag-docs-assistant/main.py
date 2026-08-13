@@ -8,14 +8,21 @@ from slowapi import Limiter,_rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
 
+def get_real_client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return get_remote_address(request)
+
 
 app = FastAPI()
 
-limiter = Limiter(key_func=get_remote_address)
+limiter = Limiter(key_func=get_real_client_ip)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded,_rate_limit_exceeded_handler)
 class QueryRequest(BaseModel):
     question: str
+
 
 
 @app.get("/")
