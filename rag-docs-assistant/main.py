@@ -30,6 +30,11 @@ def index():
     return FileResponse("static/index.html")
 
 
+@app.get("/resume.pdf")
+def resume():
+    return FileResponse("readme_assets/Resume.pdf", media_type="application/pdf")
+
+
 @app.post("/query")
 @limiter.limit("5/minute")
 def query(request:Request,body:QueryRequest):
