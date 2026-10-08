@@ -14,6 +14,9 @@ class EvalCase(BaseModel):
     key_facts: list[str] = []         # facts a correct answer MUST contain
 
 
+# Key-fact rule: list only what a correct answer cannot leave out.
+# Every fact below was checked against the FastAPI docs page it comes from.
+
 EVAL_QUESTIONS: list[EvalCase] = [
     # ---------- direct ----------
     EvalCase(
@@ -23,9 +26,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["path-params"],
         should_answer=True,
         key_facts=[
-            "declared in the path with curly braces, e.g. /items/{item_id}",
-            "the function takes an argument with the same name",
-            "a type annotation (e.g. int) makes FastAPI convert and validate it",
+            "declare it in the path with curly braces, e.g. /items/{item_id}",
+            "the path operation function takes an argument with the same name",
         ],
     ),
     EvalCase(
@@ -35,9 +37,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["dependencies"],
         should_answer=True,
         key_facts=[
-            "the dependency is a function (a 'dependable') that can take the same parameters as a path operation",
-            "it is declared in the path operation's parameters with Depends(the_function)",
-            "FastAPI calls the dependency and passes its return value into the path operation",
+            "declare a path operation parameter using Depends(the_dependency), passing the function or class itself",
+            "FastAPI calls the dependency and passes its result into the path operation",
         ],
     ),
     EvalCase(
@@ -47,9 +48,9 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["body"],
         should_answer=True,
         key_facts=[
-            "define a class that inherits from pydantic BaseModel",
-            "declare a path operation parameter typed as that model",
-            "invalid data returns a clear error showing where and what was wrong",
+            "define a model class that inherits from Pydantic's BaseModel",
+            "declare a path operation parameter with that model as its type",
+            "FastAPI validates the body automatically and returns an error if the data is invalid",
         ],
     ),
     EvalCase(
@@ -59,8 +60,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["background-tasks"],
         should_answer=True,
         key_facts=[
-            "declare a parameter of type BackgroundTasks in the path operation",
-            "add work with background_tasks.add_task(func, *args)",
+            "add a parameter of type BackgroundTasks to the path operation (or a dependency)",
+            "schedule work with background_tasks.add_task(...)",
             "the task runs after the response is sent",
         ],
     ),
@@ -71,9 +72,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["cors"],
         should_answer=True,
         key_facts=[
-            "import CORSMiddleware",
-            "add it with app.add_middleware(CORSMiddleware, ...)",
-            "allow_origins lists the permitted origins",
+            "use CORSMiddleware, added to the app with app.add_middleware",
+            "allow_origins lists the origins that are permitted",
         ],
     ),
     EvalCase(
@@ -83,9 +83,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["response-model"],
         should_answer=True,
         key_facts=[
-            "use the response_model parameter on the decorator or the function's return type annotation",
-            "FastAPI validates and filters the output data to that model",
-            "filtering lets you hide fields such as a password from the response",
+            "declare it with the function's return type annotation or the response_model parameter",
+            "FastAPI validates the returned data and filters it to the model's fields",
         ],
     ),
     EvalCase(
@@ -95,9 +94,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["cloud"],
         should_answer=True,
         key_facts=[
-            "a platform to deploy FastAPI apps with one command, fastapi deploy",
-            "built by the same author and team behind FastAPI",
-            "handles things like HTTPS and replication with autoscaling",
+            "a platform for deploying FastAPI apps, built by the team behind FastAPI",
+            "you deploy with a single command, fastapi deploy",
         ],
     ),
     EvalCase(
@@ -107,9 +105,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["bigger-applications"],
         should_answer=True,
         key_facts=[
-            "use APIRouter in separate modules",
-            "register routers on the app with app.include_router",
-            "include_router can set a prefix, tags and dependencies",
+            "split routes into separate modules using APIRouter",
+            "register each router on the main app with app.include_router",
         ],
     ),
     EvalCase(
@@ -119,9 +116,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["security"],
         should_answer=True,
         key_facts=[
-            "use OAuth2PasswordBearer with a tokenUrl",
-            "the scheme is used as a dependency with Depends to get the token",
-            "the password flow with Bearer tokens (JWT in the full example)",
+            "create an OAuth2PasswordBearer scheme with a tokenUrl",
+            "use the scheme as a dependency (Depends) to get the bearer token in the path operation",
         ],
     ),
     EvalCase(
@@ -131,8 +127,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["static-files"],
         should_answer=True,
         key_facts=[
-            "import StaticFiles",
-            "mount it with app.mount('/static', StaticFiles(directory='static'), name='static')",
+            "use the StaticFiles class",
+            "mount it on the app, e.g. app.mount('/static', StaticFiles(directory='static'), name='static')",
         ],
     ),
     EvalCase(
@@ -142,9 +138,9 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["websockets"],
         should_answer=True,
         key_facts=[
-            "declare the endpoint with @app.websocket('/ws')",
-            "call await websocket.accept() first",
-            "receive and send in a loop, e.g. receive_text and send_text",
+            "declare the endpoint with the @app.websocket(...) decorator",
+            "accept the connection with await websocket.accept()",
+            "receive and send messages, e.g. receive_text and send_text, typically in a loop",
         ],
     ),
     EvalCase(
@@ -154,9 +150,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["testing"],
         should_answer=True,
         key_facts=[
-            "use TestClient from fastapi.testclient, passing it the app",
-            "TestClient needs httpx installed",
-            "write normal test functions run with pytest and assert on the response",
+            "create a TestClient by passing it the FastAPI app",
+            "write test functions (run with pytest) that call the client and assert on the response",
         ],
     ),
     EvalCase(
@@ -166,61 +161,10 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["alternatives"],
         should_answer=True,
         key_facts=[
-            "Flask is a microframework without built-in database integrations",
-            "FastAPI took Flask's micro-framework, mix-and-match approach and simple routing",
-            "FastAPI adds automatic data validation, serialization and OpenAPI docs from Python type hints",
+            "Flask is a microframework that leaves out built-ins such as database integration",
+            "FastAPI adds automatic data validation, serialization and API docs based on Python type hints",
         ],
     ),
-
-    # ---------- paraphrased ----------
-    # Was expected_source="dependencies" (FastAPI's Depends page), which was wrong:
-    # "add a dependency to my project" means installing a package.
-    EvalCase(
-        id="q13",
-        question="How do I add a dependency to my Python project?",
-        category="paraphrased",
-        expected_sources=["virtual-environments"],
-        should_answer=True,
-        key_facts=[
-            "the docs recommend uv to manage the project and its dependencies",
-            "add a package with uv add, e.g. uv add \"fastapi[standard]\"",
-            "uv creates the virtual environment automatically",
-        ],
-    ),
-
-    # ---------- out_of_scope ----------
-    EvalCase(
-        id="q15",
-        question="What is the capital of France?",
-        category="out_of_scope",
-        should_answer=False,
-    ),
-    EvalCase(
-        id="q16",
-        question="How do I train a machine learning model with PyTorch?",
-        category="out_of_scope",
-        should_answer=False,
-    ),
-    EvalCase(
-        id="q17",
-        question="What's the best recipe for chocolate chip cookies?",
-        category="out_of_scope",
-        should_answer=False,
-    ),
-
-    # ---------- near_miss ----------
-    # The alternatives page discusses Django, so retrieval may pull it in,
-    # but the docs never explain how to set up Django routing.
-    EvalCase(
-        id="q18",
-        question="How do I set up routing in Django?",
-        category="near_miss",
-        should_answer=False,
-    ),
-
-        # ======== NEW (Oct 6) ========
-
-    # ---------- direct (new topics) ----------
     EvalCase(
         id="q19",
         question="How do I run code when my FastAPI app starts up and shuts down?",
@@ -228,9 +172,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["events"],
         should_answer=True,
         key_facts=[
-            "define a lifespan function as an async context manager (@asynccontextmanager)",
-            "code before yield runs on startup, code after yield runs on shutdown",
-            "pass it to the app with FastAPI(lifespan=lifespan)",
+            "use a lifespan function (an @asynccontextmanager) passed to FastAPI(lifespan=...)",
+            "code before yield runs at startup and code after yield runs at shutdown",
         ],
     ),
     EvalCase(
@@ -241,11 +184,22 @@ EVAL_QUESTIONS: list[EvalCase] = [
         should_answer=True,
         key_facts=[
             "use Query with max_length, e.g. Query(max_length=50)",
-            "declare it with Annotated, e.g. Annotated[str | None, Query(max_length=50)]",
+            "FastAPI validates the value and returns a clear error if it is too long",
         ],
     ),
 
     # ---------- paraphrased (a problem, not the docs' words) ----------
+    EvalCase(
+        id="q13",
+        question="How do I add a dependency to my Python project?",
+        category="paraphrased",
+        expected_sources=["virtual-environments"],
+        should_answer=True,
+        key_facts=[
+            "the docs recommend uv to manage the project and its dependencies",
+            "add a package with uv add, e.g. uv add \"fastapi[standard]\"",
+        ],
+    ),
     EvalCase(
         id="q21",
         question="My React app on localhost:3000 gets blocked by the browser when it calls my API on port 8000. How do I fix it?",
@@ -253,9 +207,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["cors"],
         should_answer=True,
         key_facts=[
-            "this is CORS: different ports count as different origins",
-            "add CORSMiddleware with app.add_middleware",
-            "put http://localhost:3000 in allow_origins",
+            "this is a CORS issue: a different port is a different origin",
+            "add CORSMiddleware with http://localhost:3000 in allow_origins",
         ],
     ),
     EvalCase(
@@ -265,8 +218,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["response-model", "extra-models"],
         should_answer=True,
         key_facts=[
-            "declare an output model without the password field",
-            "set it as response_model (or the return type) so FastAPI filters the output",
+            "use a separate output model that does not include the password field",
+            "set it as the response_model (or return type) so FastAPI filters the output",
         ],
     ),
     EvalCase(
@@ -276,9 +229,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["background-tasks"],
         should_answer=True,
         key_facts=[
-            "use BackgroundTasks as a parameter",
-            "call background_tasks.add_task with the email function",
-            "the task runs after the response is returned",
+            "use BackgroundTasks and add the email-sending function with add_task",
+            "the task runs after the response is returned, so the client does not wait",
         ],
     ),
     EvalCase(
@@ -288,8 +240,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["bigger-applications"],
         should_answer=True,
         key_facts=[
-            "move routes into modules using APIRouter",
-            "connect them with app.include_router",
+            "move routes into separate modules using APIRouter",
+            "connect them to the main app with app.include_router",
         ],
     ),
 
@@ -301,9 +253,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["testing-dependencies", "dependencies"],
         should_answer=True,
         key_facts=[
-            "use TestClient to call the endpoint",
-            "replace the dependency with app.dependency_overrides[original] = override",
-            "clear overrides afterwards (app.dependency_overrides = {})",
+            "override the dependency with app.dependency_overrides[original] = override",
+            "call the endpoint with TestClient so the override runs instead of the real database",
         ],
     ),
     EvalCase(
@@ -313,8 +264,8 @@ EVAL_QUESTIONS: list[EvalCase] = [
         expected_sources=["bigger-applications", "security"],
         should_answer=True,
         key_facts=[
-            "create the auth check as a dependency (e.g. using OAuth2PasswordBearer)",
-            "pass it in dependencies=[Depends(...)] on APIRouter or include_router",
+            "make the auth check a dependency (e.g. based on OAuth2PasswordBearer)",
+            "add it with dependencies=[Depends(...)] on the APIRouter or in app.include_router, so it applies to every route",
         ],
     ),
     EvalCase(
@@ -325,30 +276,32 @@ EVAL_QUESTIONS: list[EvalCase] = [
         should_answer=True,
         key_facts=[
             "write a dependency that creates the session and yields it",
-            "code after yield (or a finally block) closes the session",
-            "inject it into path operations with Depends",
+            "code after yield (ideally in a finally block) closes the session after the request",
+            "inject the session into path operations with Depends",
         ],
     ),
 
+    # ---------- out_of_scope ----------
+    EvalCase(id="q15", question="What is the capital of France?",
+             category="out_of_scope", should_answer=False),
+    EvalCase(id="q16", question="How do I train a machine learning model with PyTorch?",
+             category="out_of_scope", should_answer=False),
+    EvalCase(id="q17", question="What's the best recipe for chocolate chip cookies?",
+             category="out_of_scope", should_answer=False),
+
     # ---------- near_miss (FastAPI-adjacent, NOT answered by the docs) ----------
-    EvalCase(
-        id="q28",
-        question="How do I configure Celery workers and a Redis broker for my FastAPI app?",
-        category="near_miss",   # background-tasks page mentions Celery but doesn't configure it
-        should_answer=False,
-    ),
-    EvalCase(
-        id="q29",
-        question="How do I deploy FastAPI to AWS Lambda using Mangum?",
-        category="near_miss",   # deployment pages say 'follow your provider's guides'
-        should_answer=False,
-    ),
-    EvalCase(
-        id="q30",
-        question="How do I define models and run migrations with the Django ORM?",
-        category="near_miss",   # alternatives page describes Django, not its ORM usage
-        should_answer=False,
-    ),
+    # The alternatives page describes Django but never explains Django routing.
+    EvalCase(id="q18", question="How do I set up routing in Django?",
+             category="near_miss", should_answer=False),
+    # The background-tasks page recommends Celery for heavy work but never configures it.
+    EvalCase(id="q28", question="How do I configure Celery workers and a Redis broker for my FastAPI app?",
+             category="near_miss", should_answer=False),
+    # No FastAPI docs page covers AWS Lambda or Mangum.
+    EvalCase(id="q29", question="How do I deploy FastAPI to AWS Lambda using Mangum?",
+             category="near_miss", should_answer=False),
+    # The SQL tutorial covers SQLModel and Alembic, not the Django ORM.
+    EvalCase(id="q30", question="How do I define models and run migrations with the Django ORM?",
+             category="near_miss", should_answer=False),
 ]
 
 
