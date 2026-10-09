@@ -9,8 +9,8 @@ from eval_set import EVAL_QUESTIONS
 load_dotenv()
 client = Anthropic()
 JUDGE_MODEL = "claude-sonnet-4-5"
-RESULTS_FILE = Path("results/v1_baseline.json")
-JUDGED_FILE = Path("results/v1_baseline_judged.json")
+RESULTS_FILE = Path("results/v2_20261009_2247.json")
+JUDGED_FILE = Path("results/v2_judged.json")
 
 
 FAITHFULNESS_TOOL = {
@@ -204,7 +204,7 @@ def main():
             except json.JSONDecodeError:
                 claims = [claims]
             faith["unsupported_claims"] = claims
-            
+
         is_faithful = faith["faithful"] and not faith["unsupported_claims"]
 
 

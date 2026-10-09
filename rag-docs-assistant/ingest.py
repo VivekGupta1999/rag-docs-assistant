@@ -1,5 +1,29 @@
 from pathlib import Path
 import chromadb
+import re 
+
+
+REPO = Path("fastapi-repo")
+
+INCLUDE_PATTERN = re.compile(r"\{\*\s*(\S*docs_src/\S+).*?\*\}")
+
+def inline_code_includes(text):
+    """Replace every {* ../../docs_src/... *} line with the real code."""
+    def replace(match):
+        path = match.group(1)
+        if "docs_src/" not in path:              # 1. not a code include → leave it alone
+            return match.group(0)
+        rel = path[path.index("docs_src/"):]     # safe now: we know docs_src/ is there
+        code_file = REPO / rel
+        if not code_file.exists():               # 2. file missing → leave it alone
+            return match.group(0)
+        code = code_file.read_text()
+        return f"```python\n{code}\n```"
+   
+
+    return INCLUDE_PATTERN.sub(replace, text)
+
+
 
 docs_dir = Path("fastapi-repo/docs/en/docs")
 chroma_client = chromadb.PersistentClient(path="./chroma_db")
@@ -24,6 +48,8 @@ shortest_length = float("inf")
 
 for path in md_files:
     content = path.read_text(encoding="utf-8")
+    
+
     length = len(content)
     total_chars += length
 
@@ -52,6 +78,7 @@ all_chunks = []
 
 for path in md_files:
     content = path.read_text(encoding="utf-8")
+    content = inline_code_includes(content) 
     chunks = chunk_text(content)
     for chunk in chunks:
         all_chunks.append({"text":chunk,"source":str(path)})
