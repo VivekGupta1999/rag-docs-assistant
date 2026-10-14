@@ -22,17 +22,20 @@ collection = chroma_client.get_collection(name="fastapi_docs")
 # documents = result["documents"][0]
 # metadatas = result["metadatas"][0]
 
+
+
 SYSTEM_PROMPT = """
-You are an expert in Fast API who will be answering any queries about Fast API using only the context provided below. 
-If you are not able the find the answer in the context you should say I don't know. 
+You are an expert in Fast API who will be answering any queries about Fast API using only the context provided below.
+If you are not able the find the answer in the context you should say I don't know.
 Also any answer provided should have citations saying which file the information came from.
+Only use code that appears in the context. You may shorten it, but do not invent new code, parameters or example values.
 """
 
 
 def get_context(question):
     result = collection.query(
         query_texts=[question],
-        n_results= 3,
+        n_results= 5,
         where={"doc_type":"guide"}
     )
 
