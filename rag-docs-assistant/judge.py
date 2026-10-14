@@ -9,8 +9,8 @@ from eval_set import EVAL_QUESTIONS
 load_dotenv()
 client = Anthropic()
 JUDGE_MODEL = "claude-sonnet-4-5"
-RESULTS_FILE = Path("results/v2_20261009_2247.json")
-JUDGED_FILE = Path("results/v2_judged.json")
+RESULTS_FILE = Path("results/v7_20261014_1300.json")
+JUDGED_FILE = Path("results/v7_judged.json")
 
 
 FAITHFULNESS_TOOL = {
@@ -233,7 +233,7 @@ def main():
             "faith": faith,
         })
 
-    JUDGED_FILE.write_text(json.dumps(records, indent=2))
+        JUDGED_FILE.write_text(json.dumps(records, indent=2))
     print(f"\nCorrect:  {correct}/{total}")
     print(f"Faithful: {faithful_count}/{total}")
     print(f"Saved {JUDGED_FILE}")
