@@ -3,9 +3,8 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from anthropic import Anthropic
-from hybrid import hybrid_search
 
-RETRIEVAL = "hybrid"   # "hybrid" or "vector" (rollback switch)
+RETRIEVAL = "vector"  # "hybrid" or "vector" (rollback switch)
 client = Anthropic()
 model = "claude-haiku-4-5-20251001"
 
@@ -36,6 +35,9 @@ Only use code that appears in the context. You may shorten it, but do not invent
 
 def get_context(question):
     if RETRIEVAL == "hybrid":
+     
+        from hybrid import hybrid_search
+        results = hybrid_search(question, n=5)
         results = hybrid_search(question, n=5)
         documents = [doc for doc, _ in results]
         sources = [source for _, source in results]

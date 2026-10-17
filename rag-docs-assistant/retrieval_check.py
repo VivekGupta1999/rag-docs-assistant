@@ -53,7 +53,7 @@ def main():
     print(f"expected: {miss.expected_sources}")
     print("vector:", [s.split('/docs/')[-1] for s in vector_sources(miss.question)])
     print("hybrid:", [s.split('/docs/')[-1] for s in hybrid_sources(miss.question)])  
-    print(f"Hybrid hit@5: {hyb_hits}/{total} ({hyb_hits / total:.0%})")
+
 
 
 if __name__ == "__main__":
