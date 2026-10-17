@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from anthropic import Anthropic
+from hybrid import hybrid_search
 
+RETRIEVAL = "hybrid"   # "hybrid" or "vector" (rollback switch)
 client = Anthropic()
 model = "claude-haiku-4-5-20251001"
 
@@ -33,24 +35,29 @@ Only use code that appears in the context. You may shorten it, but do not invent
 
 
 def get_context(question):
-    result = collection.query(
-        query_texts=[question],
-        n_results= 5,
-        where={"doc_type":"guide"}
-    )
+    if RETRIEVAL == "hybrid":
+        results = hybrid_search(question, n=5)
+        documents = [doc for doc, _ in results]
+        sources = [source for _, source in results]
+    else:
+        result = collection.query(
+            query_texts=[question],
+            n_results=5,
+            where={"doc_type": "guide"}
+        )
+        documents = result["documents"][0]
+        sources = [meta["source"] for meta in result["metadatas"][0]]
 
-    context = format_context(result["documents"][0], result["metadatas"][0])
-    sources = [meta["source"] for meta in result["metadatas"][0]]
-    return context,sources
+    context = format_context(documents, sources)
+    return context, sources
 
-def format_context(documents,metadatas):
+
+def format_context(documents, sources):
     parts = []
-    for doc,meta in zip(documents,metadatas):
-        info = F"[Source : {meta['source']},\n document text: {doc}]"
+    for doc, source in zip(documents, sources):
+        info = f"[Source : {source},\n document text: {doc}]"
         parts.append(info)
     return "\n\n".join(parts)
-
-
 # print(get_context("What is a Fast API cloud?"))
 
 

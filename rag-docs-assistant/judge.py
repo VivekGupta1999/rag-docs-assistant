@@ -9,8 +9,8 @@ from eval_set import EVAL_QUESTIONS
 load_dotenv()
 client = Anthropic()
 JUDGE_MODEL = "claude-sonnet-4-5"
-RESULTS_FILE = Path("results/v7_20261014_1300.json")
-JUDGED_FILE = Path("results/v7_judged.json")
+RESULTS_FILE = Path("results/v8_20261017_1818.json")
+JUDGED_FILE = Path("results/v8_judged.json")
 
 
 FAITHFULNESS_TOOL = {
