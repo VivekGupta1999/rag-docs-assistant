@@ -31,7 +31,26 @@ If you are not able the find the answer in the context you should say I don't kn
 Also any answer provided should have citations saying which file the information came from.
 Only use code that appears in the context. You may shorten it, but do not invent new code, parameters or example values.
 """
+WINDOW = 1   # how many neighbouring chunks to add on each side
 
+def expand(ids):
+    nums = [int(i.split("_")[1]) for i in ids]
+    wanted = sorted({k for n in nums for k in range(n - WINDOW, n + WINDOW + 1)})
+    got = collection.get(ids=[f"chunk_{k}" for k in wanted], include=["documents", "metadatas"])
+    chunk = {int(i.split("_")[1]): (doc, m["source"])
+             for i, doc, m in zip(got["ids"], got["documents"], got["metadatas"])}
+
+    pages = {}
+    for n in nums:
+        src = chunk[n][1]
+        pages.setdefault(src, set())
+        for k in range(n - WINDOW, n + WINDOW + 1):
+            if k in chunk and chunk[k][1] == src:
+                pages[src].add(k)
+
+    documents = ["\n\n".join(chunk[k][0] for k in sorted(ks)) for ks in pages.values()]
+    sources = list(pages.keys())
+    return documents, sources
 
 def get_context(question):
     if RETRIEVAL == "hybrid":
@@ -47,8 +66,7 @@ def get_context(question):
             n_results=5,
             where={"doc_type": "guide"}
         )
-        documents = result["documents"][0]
-        sources = [meta["source"] for meta in result["metadatas"][0]]
+        documents, sources = expand(result["ids"][0])
 
     context = format_context(documents, sources)
     return context, sources
