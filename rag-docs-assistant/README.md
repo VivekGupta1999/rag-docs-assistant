@@ -1,117 +1,108 @@
 # RAG Docs Assistant
 
-A retrieval-augmented Q&A assistant that answers questions about **FastAPI's official documentation** — built from scratch, evaluated with real metrics, containerized, and deployed.
+A question-answering assistant over the official **FastAPI documentation**. It answers with grounded code, cites the pages it used, and says "I don't know" when the docs don't cover the question.
 
 **Live demo:** https://rag-docs-assistant-e96h.onrender.com
-*(Free-tier hosting, so the app spins down after 15 minutes of inactivity — the first request after idle time can take 30-50 seconds to wake up.)*
+**Stack:** Python · FastAPI · ChromaDB · Claude API (Haiku for answers, Sonnet as judge) · Docker · Render
 
-Ask it things like:
-- "How do I add a dependency using Depends()?"
-- "How do background tasks work in FastAPI?"
-- "What is FastAPI Cloud?"
-
-It retrieves the relevant sections of FastAPI's real docs, answers using only that context, and cites its sources — and says "I don't know" instead of guessing when a question falls outside the documentation.
+The interesting part is not the chatbot. It's the **evaluation harness** and the **10 measured versions** it drove: answer correctness went from **26% to 87%** (v9, live), and every change was kept or rejected based on numbers.
 
 ---
 
-## Why I built this
+## How it works
 
-RAG is one of the most in-demand applied AI skills right now, and most portfolio RAG projects stop at "it retrieves stuff and calls an LLM." I wanted mine to go further — an actual evaluation harness with real numbers, honestly documented limitations, and a real deployment instead of something that only runs on my own machine.
+**Ingestion**
+
+- 155 FastAPI doc pages → ~2,400 chunks in ChromaDB.
+- Code samples that the docs pull in from separate files are **inlined** (the first version was indexing the include tag instead of the code).
+- **Heading-aware chunking** that never splits a code block; each chunk is labelled `Page > Section`.
+- Changelog and auto-generated API-reference pages are excluded from retrieval with metadata filters.
+
+**Retrieval (v9, live)**
+
+- Vector search, top 5 chunks.
+- **Neighbour expansion:** each retrieved chunk is sent together with the chunk before and after it on the same page, joined in reading order. Questions are written in prose, so they match prose chunks; the code usually sits in the next chunk.
+
+**Generation**
+
+- Claude Haiku, `temperature=0`, with a grounding rule: only use code that appears in the context, never invent parameters or values.
+- Refuses with "I don't know" when the context doesn't answer the question.
+
+**Serving**
+
+- FastAPI app, Docker, deployed on Render, per-IP rate limiting.
+
+**Agent (v10, experiment, `agent.py`)**
+
+- Claude gets two tools, `search_docs(query)` and `read_page(source)`, and decides what to search and how many times.
+- Hand-written tool loop on the Claude API (no framework): capped at 5 rounds, tool errors returned to the model as text instead of crashing, first round forced to be a tool call (`tool_choice: any`).
+- Returns the answer, sources, a trace of every tool call, and the exact text the tools returned (used by the faithfulness judge).
 
 ---
 
-## Architecture
+## How it's evaluated
 
-![Architecture diagram](readme_assets/architecture.png)
-
-**Ingestion (runs once)** — Shallow-clones FastAPI's repo, walks all 155 markdown files under `docs/en/docs/`, and splits them into ~1,900 overlapping chunks (1000 characters, 200 character overlap).
-
-**Storage** — Each chunk is embedded using Chroma's built-in local MiniLM model (no external embedding API needed) and persisted in a local Chroma vector store, tagged with metadata for which file it came from and whether it's a "guide" or "changelog" entry.
-
-**Retrieval** — Given a question, the top-3 most semantically similar chunks are retrieved, filtered to exclude changelog noise. I added that filter after noticing changelog entries were crowding out actual tutorial content in the results — more on that below.
-
-**Generation** — Retrieved chunks are formatted with source labels and sent to Claude with a system prompt instructing it to answer *only* from the provided context, cite sources, and say "I don't know" if the context doesn't cover the question.
-
-**Serving** — A FastAPI backend exposes a `POST /query` endpoint (rate-limited to 5 requests/minute per IP), with a minimal HTML/JS frontend on top.
+- **30 test questions:** direct, paraphrased, multi-page, out-of-scope, and near-miss questions it must refuse (Django, Celery, AWS Lambda…).
+- **Retrieval hit@5:** did the right source page come back? Checked against pages listed by hand. Free, no API calls.
+- **Correctness:** a separate, stronger model (Sonnet) checks the answer against **key facts written by hand** for each question.
+- **Faithfulness:** the judge gets only the answer and the text the bot actually read, and lists every claim that isn't supported by it. For the agent, that text is the recorded tool output, not a re-run of the search.
+- **Behaviour:** answers when it should, refuses when it should.
+- Verdicts are cached on their exact inputs and saved after every question, so a re-run only pays for what changed.
 
 ---
 
-## Evaluation
+## Results
 
-I wrote 18 test questions by hand — 14 real questions covering different parts of FastAPI, and 4 deliberately out-of-scope questions to check the refusal behavior actually holds up, not just on one lucky example — and scored them automatically:
+Correct and faithful are out of 23 answerable questions.
 
-| Metric | Score |
-|---|---|
-| Retrieval accuracy (correct source retrieved) | 11/14 (79%) |
-| Generation accuracy (correct answer or correct refusal) | 17/18 (94%) |
+| Version       | Change                                                         | Retrieval | Correct | Faithful |
+| ------------- | -------------------------------------------------------------- | --------- | ------- | -------- |
+| v1            | Baseline                                                       | 74%       | 26%     | 35%      |
+| v2            | Inlined code samples the docs load from separate files         |           | 39%     | 52%      |
+| v3–v5         | Heading-aware chunking; filtered changelog and reference pages |           | 43%     | 70%      |
+| v6            | Retrieve top 5 instead of top 3                                |           | 70%     | 57%      |
+| v7            | Grounding rule: only use code that appears in the context      | 96%       | 61%     | 65%      |
+| v8            | Hybrid BM25 + vector search (**not shipped**)                  |           | 48%     | 74%      |
+| —             | Cross-encoder reranker, 4 models (**not shipped**)             | 83%       | —       | —        |
+| **v9 (live)** | **Neighbour-chunk expansion**                                  | **96%**   | **87%** | **83%**  |
+| v10           | Tool-calling agent (experiment)                                | **100%**  | 91%     | 74%      |
 
-All 4 out-of-scope questions ("What is the capital of France?", "How do I set up routing in Django?", etc.) were correctly refused — no hallucination.
+---
 
-Run it yourself:
-```bash
-python eval_runner.py
-```
+## Decisions worth explaining
+
+- **The first number was wrong.** An early test claimed 94%. A proper eval showed 26%: ingestion was saving placeholder lines instead of code.
+- **Correctness vs faithfulness is a real trade-off.** Top-5 retrieval made answers more complete but the model started inventing parameters. A grounding rule recovered most of it.
+- **Hybrid search and reranking were built, measured and rejected.** Retrieval already found the right page 22/23 times; keyword matching and web-trained rerankers pushed paraphrased questions down.
+- **The real bottleneck was what the model received, not search.** Reading the failures showed answers with the right idea but no code: the code was in the next chunk. Neighbour expansion took correctness from 61% to 87% and faithfulness from 65% to 83%, the first change where both went up.
+- **The agent finds more but invents more.** It reached 100% retrieval and fixed multi-part questions, but faithfulness dropped (83% → 74%): it stitched code from two pages together, and filled gaps when a page was cut off by the read limit. It's also ~1.4× the cost and ~2× the latency. v9 stays live.
+- **Some rules belong in code, not in the prompt.** Three prompt versions couldn't stop the agent from refusing without searching. Forcing the first round to be a tool call fixed it in one line.
 
 ---
 
 ## Known limitations
 
-- **`release-notes.md` dominates the corpus** — it's roughly 47% of the total character count (it's FastAPI's full changelog). Chunks from it are tagged `doc_type: changelog` and excluded from default retrieval so they don't crowd out more relevant tutorial content.
-- **Fixed-size chunking can cut through markdown structure** — a chunk boundary can land mid-code-block or mid-diagram. It's large enough with enough overlap that this rarely hurts answer quality, but a heading-aware chunker would be a cleaner fix.
-- **"Dependency" is genuinely ambiguous** — it means both a Python package dependency and FastAPI's `Depends()` injection system. Retrieval consistently favors the `Depends()` interpretation; that's a real embedding-model limitation, not a bug I introduced.
-- **3 of 14 retrieval misses** were on questions about path parameters, static files, and testing — the right docs exist, they just didn't rank in the top-3 for those specific phrasings. Reranking or hybrid (keyword + vector) search would likely fix this.
-- **One generation miss**: asked to compare FastAPI and Flask, retrieval succeeded but the model played it safe and said "I don't know" instead of synthesizing a comparison. An overly-cautious failure mode, not a hallucination.
+- Comparison questions (e.g. FastAPI vs Flask) still fail: the docs don't compare directly, and the bot hedges.
+- The agent's `read_page` truncates long pages, which caused at least one invented answer.
+- 23 answerable questions is small: one question is ~4%, so differences of ±2 are noise.
+
+## Next
+
+- A verification step that checks every code line in the answer against the tool results.
+- Stronger generator (Sonnet) as an experiment, to find the quality ceiling and its cost.
+- A larger eval set (50–100 questions).
 
 ---
 
-## Tech stack
-
-Python · FastAPI · ChromaDB (local embeddings + vector store) · Anthropic Claude API · Docker · Render
-
----
-
-## Running it locally
+## Run the evaluation
 
 ```bash
-git clone https://github.com/VivekGupta1999/rag-docs-assistant.git
-cd rag-docs-assistant
-python3 -m venv venv
-source venv/bin/activate
 pip install -r requirements.txt
+# needs ANTHROPIC_API_KEY in .env
 
-# Add your Anthropic API key
-echo "ANTHROPIC_API_KEY=your-key-here" > .env
-
-# Build the vector store (one-time — clones FastAPI's docs and embeds them)
-python ingest.py
-
-# Run the server
-uvicorn main:app --reload
+python -c "from eval_runner import run_eval; run_eval('v9')"                  # v9 pipeline
+python -c "from eval_runner import run_eval; run_eval('v10', mode='agent')"   # agent
+python judge.py          # set RESULTS_FILE / JUDGED_FILE at the top first
+python retrieval_check.py  # free retrieval check
+python agent.py          # try the agent on two sample questions
 ```
-Then visit `http://localhost:8000`.
-
-**Or with Docker:**
-```bash
-docker build -t rag-docs-assistant .
-docker run -p 8000:8000 --env-file .env rag-docs-assistant
-```
-
----
-
-## Notes from building and deploying this
-
-A few real bugs hit along the way, worth mentioning since they taught me more than the parts that went smoothly:
-
-- A **Python version mismatch** between local dev (3.9) and the Docker image (3.12) caused a dependency conflict (`click`/`typer`) that only showed up inside the container — fixed by standardizing both environments on 3.12.
-- The **embedding model's local cache** lives outside the project directory (`~/.cache/chroma/`), so it wasn't included in the Docker image and had to re-download on first cold start.
-- A **misnamed folder** (`chromadb` instead of the correct `chroma_db`) caused the deployed app to silently initialize an empty database instead of the real one — a `NotFoundError` with no obvious cause until I traced it back to the folder name.
-- **Rate limiting silently failed in production** despite working locally, because the deployed app sits behind Render's reverse proxy, so `request.client.host` returned Render's internal IP instead of the real visitor's. Fixed by reading the `X-Forwarded-For` header instead.
-
----
-
-## What I'd build next
-
-- Heading-aware chunking instead of fixed-size splitting
-- Hybrid search (keyword + vector) to fix the retrieval misses above
-- Bake the embedding model into the Docker image to remove the cold-start delay
-- A lightweight agentic extension — letting the assistant also search FastAPI's live GitHub issues, not just the docs, and decide which source is more relevant
