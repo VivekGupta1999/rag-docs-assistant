@@ -5,7 +5,7 @@ from pathlib import Path
 
 from generate import answer_question
 from eval_set import EVAL_QUESTIONS, EvalCase
-
+from agent import ask_agent
 
 
 
@@ -24,11 +24,15 @@ def check_refusal(answer: str) -> bool:
     return "i don't know" in answer.lower()
 
 
-def run_eval(tag: str = "v1") -> dict:
+def run_eval(tag: str = "v1", mode: str = "v9") -> dict:
     results = []
     for case in EVAL_QUESTIONS:
-        answer, sources = answer_question(case.question)
-
+        #answer, sources = answer_question(case.question)
+        if mode == "agent":
+            answer, sources, trace, context = ask_agent(case.question)
+        else:
+            answer, sources = answer_question(case.question)
+            trace, context = [], None
         retrieval_pass = check_retrieval(case, sources)
         refused = check_refusal(answer)
         behaviour_pass = (not refused) if case.should_answer else refused
@@ -39,6 +43,9 @@ def run_eval(tag: str = "v1") -> dict:
             "question": case.question,
             "sources": sources,
             "answer": answer,
+            "context": context,
+            "tool_calls": len(trace),
+            "trace": trace,
             "retrieval_pass": retrieval_pass,
             "behaviour_pass": behaviour_pass,
         })

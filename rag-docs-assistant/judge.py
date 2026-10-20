@@ -9,8 +9,8 @@ from eval_set import EVAL_QUESTIONS
 load_dotenv()
 client = Anthropic()
 JUDGE_MODEL = "claude-sonnet-4-5"
-RESULTS_FILE = Path("results/v8_20261017_1818.json")
-JUDGED_FILE = Path("results/v8_judged.json")
+RESULTS_FILE = Path("results/v10_agent_20261020_1036.json")
+JUDGED_FILE = Path("results/v10_agent_judged.json")
 
 
 FAITHFULNESS_TOOL = {
@@ -191,7 +191,11 @@ def main():
         passed = present == n_facts
 
         # ---------- faithfulness ----------
-        context, _ = get_context(case.question)  # same chunks the bot saw
+        #context, _ = get_context(case.question)  # same chunks the bot saw
+        if r.get("context") is not None:
+            context = r["context"]                    # agent: exactly what its tools returned
+        else:
+            context, _ = get_context(case.question)   # v1–v9: rebuild, same chunks the bot saw
         if saved and saved.get("context") == context and saved["answer"] == r["answer"]:
             faith = saved["faith"]
         else:
