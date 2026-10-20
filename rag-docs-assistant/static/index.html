@@ -734,7 +734,8 @@
       </div>
     </div>
   </div>
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@18.1.0/lib/marked.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.16/dist/purify.min.js"></script>
 <script>
   // ---------- Chat widget toggle ----------
   const chatBubble = document.getElementById("chat-bubble");
@@ -783,13 +784,16 @@
         body: JSON.stringify({ question })
       });
 
+      if (res.status === 429) {
+        throw new Error("Too many questions — please wait a minute and try again.");
+      }
       if (!res.ok) {
         throw new Error(`Request failed with status ${res.status}`);
       }
 
       const data = await res.json();
 
-      answerEl.innerHTML = data.answer ? marked.parse(data.answer) : "(no answer returned)";
+      answerEl.innerHTML = data.answer ? DOMPurify.sanitize(marked.parse(data.answer)) : "(no answer returned)";
       const sources = data.source || [];
       sourcesEl.innerHTML = "";
       if (sources.length === 0) {
@@ -814,11 +818,12 @@
 
   askBtn.addEventListener("click", askQuestion);
   questionInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") askQuestion();
+    if (e.key === "Enter" && !askBtn.disabled) askQuestion();
   });
 
   document.querySelectorAll(".example-btn").forEach(btn => {
     btn.addEventListener("click", () => {
+      if (askBtn.disabled) return;
       questionInput.value = btn.dataset.question;
       askQuestion();
     });
