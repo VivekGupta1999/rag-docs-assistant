@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from generate import answer_question
 
@@ -16,6 +17,7 @@ def get_real_client_ip(request: Request) -> str:
 
 
 app = FastAPI()
+app.mount("/static", StaticFiles(directory="static"))
 
 limiter = Limiter(key_func=get_real_client_ip)
 app.state.limiter = limiter
